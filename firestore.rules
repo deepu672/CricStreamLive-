@@ -1,0 +1,411 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ---------------------------------------------------------
+    // Global Hardened Primitives
+    // ---------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedEmail() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidSha256(hash) {
+      return hash is string && hash.size() >= 32 && hash.size() <= 128 && hash.matches('^[a-f0-9]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedEmail() && request.auth.token.email == 'akm6393236867@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerifiedEmail() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // ---------------------------------------------------------
+    // Entity Validation Blueprints (Anti-Update-Gap)
+    // ---------------------------------------------------------
+    function isValidMatch(data) {
+      return data.keys().hasAll([
+          'title',
+          'description',
+          'bannerUrl',
+          'streamLink',
+          'extractedVideoUrl',
+          'streamType',
+          'status',
+          'scheduledTime',
+          'createdBy',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'title',
+          'description',
+          'bannerUrl',
+          'streamLink',
+          'extractedVideoUrl',
+          'streamType',
+          'status',
+          'scheduledTime',
+          'createdBy',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
+        && data.description is string && data.description.size() <= 2000
+        && data.bannerUrl is string && data.bannerUrl.size() <= 450000
+        && data.streamLink is string && data.streamLink.size() <= 4000
+        && data.extractedVideoUrl is string && data.extractedVideoUrl.size() <= 4000
+        && data.streamType is string && data.streamType in ['auto', 'hls', 'mp4', 'iframe', 'youtube']
+        && data.status is string && data.status in ['live', 'upcoming']
+        && data.scheduledTime is string && data.scheduledTime.size() <= 80
+        && isValidId(data.createdBy)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPopupConfig(data) {
+      return data.keys().hasAll([
+          'enabled',
+          'title',
+          'description',
+          'buttonText',
+          'buttonUrl',
+          'updatedBy',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'enabled',
+          'title',
+          'description',
+          'buttonText',
+          'buttonUrl',
+          'updatedBy',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.enabled is bool
+        && data.title is string && data.title.size() <= 160
+        && data.description is string && data.description.size() <= 5000
+        && data.buttonText is string && data.buttonText.size() <= 80
+        && data.buttonUrl is string && data.buttonUrl.size() <= 1000
+        && isValidId(data.updatedBy)
+        && data.updatedBy == request.auth.uid
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMonetagConfig(data) {
+      return data.keys().hasAll([
+          'enabled',
+          'adUrl',
+          'intervalMinutes',
+          'displaySeconds',
+          'updatedBy',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'enabled',
+          'adUrl',
+          'intervalMinutes',
+          'displaySeconds',
+          'updatedBy',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.enabled is bool
+        && data.adUrl is string && data.adUrl.size() <= 1000
+        && (data.intervalMinutes is int || data.intervalMinutes is float)
+        && data.intervalMinutes >= 1 && data.intervalMinutes <= 60
+        && (data.displaySeconds is int || data.displaySeconds is float)
+        && data.displaySeconds >= 5 && data.displaySeconds <= 60
+        && isValidId(data.updatedBy)
+        && data.updatedBy == request.auth.uid
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidDeviceLock(data) {
+      return data.keys().hasAll(['isLocked', 'deviceHash', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['isLocked', 'deviceHash', 'createdAt', 'updatedAt'])
+        && data.isLocked is bool
+        && isValidSha256(data.deviceHash)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAdminSecret(data) {
+      return data.keys().hasAll([
+          'boundAdminUid',
+          'boundAdminEmail',
+          'deviceLabel',
+          'deviceHash',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'boundAdminUid',
+          'boundAdminEmail',
+          'deviceLabel',
+          'deviceHash',
+          'createdAt',
+          'updatedAt'
+        ])
+        && isValidId(data.boundAdminUid)
+        && data.boundAdminUid == request.auth.uid
+        && data.boundAdminEmail is string && data.boundAdminEmail.size() >= 3 && data.boundAdminEmail.size() <= 254
+        && data.deviceLabel is string && data.deviceLabel.size() >= 1 && data.deviceLabel.size() <= 160
+        && isValidSha256(data.deviceHash)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAdminUser(data, adminUid) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'email', 'createdAt'])
+        && isValidId(data.uid)
+        && data.uid == adminUid
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && data.createdAt is timestamp;
+    }
+
+    // ---------------------------------------------------------
+    // Collection: /matches/{matchId}
+    // Public viewers can read live & upcoming matches without login.
+    // Only verified admins can create, update, or delete matches.
+    // ---------------------------------------------------------
+    match /matches/{matchId} {
+      allow get: if isValidId(matchId) && (resource == null || resource.data.status in ['live', 'upcoming']);
+
+      // Zero DB lookups inside list; enforces resource.data constraint directly
+      allow list: if resource.data.status in ['live', 'upcoming'];
+
+      allow create: if isSignedIn()
+        && isVerifiedEmail()
+        && isValidId(matchId)
+        && isValidMatch(incoming())
+        && incoming().createdBy == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isSignedIn()
+        && isVerifiedEmail()
+        && isValidId(matchId)
+        && isValidMatch(incoming())
+        && incoming().createdBy == existing().createdBy
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title',
+          'description',
+          'bannerUrl',
+          'streamLink',
+          'extractedVideoUrl',
+          'streamType',
+          'status',
+          'scheduledTime',
+          'updatedAt'
+        ])
+        && isAdmin();
+
+      allow delete: if isSignedIn()
+        && isVerifiedEmail()
+        && isValidId(matchId)
+        && isAdmin();
+    }
+
+    // ---------------------------------------------------------
+    // Collection: /siteConfig/{configId}
+    // Singletons 'popup' and 'monetag' readable publicly; admin-only writes.
+    // ---------------------------------------------------------
+    match /siteConfig/{configId} {
+      allow get: if isValidId(configId) && configId in ['popup', 'monetag'];
+      allow list: if false;
+
+      allow create: if isSignedIn()
+        && isVerifiedEmail()
+        && isValidId(configId)
+        && (
+          (configId == 'popup' && isValidPopupConfig(incoming())) ||
+          (configId == 'monetag' && isValidMonetagConfig(incoming()))
+        )
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isSignedIn()
+        && isVerifiedEmail()
+        && isValidId(configId)
+        && (
+          (
+            configId == 'popup'
+            && isValidPopupConfig(incoming())
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'enabled',
+              'title',
+              'description',
+              'buttonText',
+              'buttonUrl',
+              'updatedBy',
+              'updatedAt'
+            ])
+          ) || (
+            configId == 'monetag'
+            && isValidMonetagConfig(incoming())
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'enabled',
+              'adUrl',
+              'intervalMinutes',
+              'displaySeconds',
+              'updatedBy',
+              'updatedAt'
+            ])
+          )
+        )
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------
+    // Collection: /deviceLocks/{lockId}
+    // Non-PII singleton 'primary' hash readable publicly so other
+    // devices are immediately blocked before login. Admin-only writes.
+    // ---------------------------------------------------------
+    match /deviceLocks/{lockId} {
+      allow get: if isValidId(lockId) && lockId == 'primary';
+      allow list: if false;
+
+      allow create: if isSignedIn()
+        && isVerifiedEmail()
+        && isValidId(lockId)
+        && lockId == 'primary'
+        && isValidDeviceLock(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isSignedIn()
+        && isVerifiedEmail()
+        && isValidId(lockId)
+        && lockId == 'primary'
+        && isValidDeviceLock(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'isLocked',
+          'deviceHash',
+          'updatedAt'
+        ])
+        && isAdmin();
+
+      allow delete: if isSignedIn()
+        && isVerifiedEmail()
+        && isValidId(lockId)
+        && lockId == 'primary'
+        && isAdmin();
+    }
+
+    // ---------------------------------------------------------
+    // Collection: /adminSecrets/{secretId}
+    // Strictly private PII (bound admin email, UID, device label).
+    // ---------------------------------------------------------
+    match /adminSecrets/{secretId} {
+      allow get: if isSignedIn()
+        && isVerifiedEmail()
+        && isValidId(secretId)
+        && secretId == 'primaryDevice'
+        && isAdmin();
+
+      allow list: if false;
+
+      allow create: if isSignedIn()
+        && isVerifiedEmail()
+        && isValidId(secretId)
+        && secretId == 'primaryDevice'
+        && isValidAdminSecret(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isSignedIn()
+        && isVerifiedEmail()
+        && isValidId(secretId)
+        && secretId == 'primaryDevice'
+        && isValidAdminSecret(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'boundAdminUid',
+          'boundAdminEmail',
+          'deviceLabel',
+          'deviceHash',
+          'updatedAt'
+        ])
+        && isAdmin();
+
+      allow delete: if isSignedIn()
+        && isVerifiedEmail()
+        && isValidId(secretId)
+        && secretId == 'primaryDevice'
+        && isAdmin();
+    }
+
+    // ---------------------------------------------------------
+    // Collection: /admins/{adminUid}
+    // Strictly private admin registry. Only existing admins can manage.
+    // ---------------------------------------------------------
+    match /admins/{adminUid} {
+      allow get: if isSignedIn()
+        && isVerifiedEmail()
+        && isValidId(adminUid)
+        && (request.auth.uid == adminUid || isAdmin());
+
+      allow list: if false;
+
+      allow create: if isSignedIn()
+        && isVerifiedEmail()
+        && isValidId(adminUid)
+        && isValidAdminUser(incoming(), adminUid)
+        && incoming().createdAt == request.time
+        && isAdmin();
+
+      allow update: if false;
+
+      allow delete: if isSignedIn()
+        && isVerifiedEmail()
+        && isValidId(adminUid)
+        && isAdmin();
+    }
+  }
+}

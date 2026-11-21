@@ -1,0 +1,318 @@
+{
+  "entities": {
+    "Match": {
+      "title": "Match",
+      "description": "A live or upcoming cricket match published by the admin.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140,
+          "description": "Display title of the cricket match"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Match details, tournament context, or broadcast notes"
+        },
+        "bannerUrl": {
+          "type": "string",
+          "maxLength": 450000,
+          "description": "Uploaded compressed data URI or HTTPS image URL for the match banner"
+        },
+        "streamLink": {
+          "type": "string",
+          "maxLength": 4000,
+          "description": "Raw stream URL, embed code, or webpage link entered by the admin"
+        },
+        "extractedVideoUrl": {
+          "type": "string",
+          "maxLength": 4000,
+          "description": "Captured direct video or embed URL extracted from streamLink"
+        },
+        "streamType": {
+          "type": "string",
+          "enum": ["auto", "hls", "mp4", "iframe", "youtube"],
+          "description": "Playback transport mode for the video capture player"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["live", "upcoming"],
+          "description": "Whether the match appears in Live Now or Upcoming"
+        },
+        "scheduledTime": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Optional scheduled start time string for upcoming matches"
+        },
+        "createdBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID of the admin who created the match"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the match was created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the match was last updated"
+        }
+      },
+      "required": [
+        "title",
+        "description",
+        "bannerUrl",
+        "streamLink",
+        "extractedVideoUrl",
+        "streamType",
+        "status",
+        "scheduledTime",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PopupConfig": {
+      "title": "PopupConfig",
+      "description": "Configurable announcement popup shown to visitors on arrival.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the popup is currently active for visitors"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160,
+          "description": "Headline of the announcement popup"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 5000,
+          "description": "Full-detail multi-line message shown inside the popup"
+        },
+        "buttonText": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Call-to-action button label such as Join Telegram or Join Instagram"
+        },
+        "buttonUrl": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "External destination URL opened when the user taps the action button"
+        },
+        "updatedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID of the admin who last updated the popup"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the popup config was first created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the popup config was last updated"
+        }
+      },
+      "required": [
+        "enabled",
+        "title",
+        "description",
+        "buttonText",
+        "buttonUrl",
+        "updatedBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MonetagConfig": {
+      "title": "MonetagConfig",
+      "description": "Timed in-website Monetag ad configuration managed by the admin.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether timed Monetag ads are active for visitors"
+        },
+        "adUrl": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Monetag Direct Link or SmartLink URL loaded inside the website"
+        },
+        "intervalMinutes": {
+          "type": "number",
+          "description": "How often the ad triggers in minutes (1 to 60)"
+        },
+        "displaySeconds": {
+          "type": "number",
+          "description": "Countdown duration in seconds before the in-website ad can be closed (5 to 60)"
+        },
+        "updatedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID of the admin who last updated the Monetag config"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the Monetag config was created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the Monetag config was last updated"
+        }
+      },
+      "required": [
+        "enabled",
+        "adUrl",
+        "intervalMinutes",
+        "displaySeconds",
+        "updatedBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DeviceLock": {
+      "title": "DeviceLock",
+      "description": "Non-PII public device lock hash preventing admin access from secondary devices.",
+      "type": "object",
+      "properties": {
+        "isLocked": {
+          "type": "boolean",
+          "description": "Whether the admin panel is locked to a single device"
+        },
+        "deviceHash": {
+          "type": "string",
+          "minLength": 32,
+          "maxLength": 128,
+          "pattern": "^[a-f0-9]+$",
+          "description": "SHA-256 hex digest of the primary admin device token"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the lock was created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the lock was last updated"
+        }
+      },
+      "required": ["isLocked", "deviceHash", "createdAt", "updatedAt"]
+    },
+    "AdminSecret": {
+      "title": "AdminSecret",
+      "description": "Private admin-only metadata storing bound admin identity and primary device label.",
+      "type": "object",
+      "properties": {
+        "boundAdminUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID of the bound admin account"
+        },
+        "boundAdminEmail": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 254,
+          "description": "Email address of the bound admin"
+        },
+        "deviceLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160,
+          "description": "Human-readable browser and OS label of the bound primary device"
+        },
+        "deviceHash": {
+          "type": "string",
+          "minLength": 32,
+          "maxLength": 128,
+          "pattern": "^[a-f0-9]+$",
+          "description": "SHA-256 hex digest matching deviceLocks/primary"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the primary device was registered"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when updated"
+        }
+      },
+      "required": [
+        "boundAdminUid",
+        "boundAdminEmail",
+        "deviceLabel",
+        "deviceHash",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized admin account registry document.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the admin"
+        },
+        "email": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 254,
+          "description": "Verified email address of the admin"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the admin record was created"
+        }
+      },
+      "required": ["uid", "email", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/matches/{matchId}": {
+      "schema": { "$ref": "#/entities/Match" },
+      "description": "Publicly readable live and upcoming cricket matches managed exclusively by verified admins."
+    },
+    "/siteConfig/{configId}": {
+      "schema": { "$ref": "#/entities/PopupConfig" },
+      "description": "Singleton site configuration document (id: 'popup') for the arrival announcement popup."
+    },
+    "/deviceLocks/{lockId}": {
+      "schema": { "$ref": "#/entities/DeviceLock" },
+      "description": "Non-PII singleton lock document (id: 'primary') holding the SHA-256 hash of the bound primary admin device."
+    },
+    "/adminSecrets/{secretId}": {
+      "schema": { "$ref": "#/entities/AdminSecret" },
+      "description": "Strictly private admin-only document (id: 'primaryDevice') containing bound admin PII and device metadata."
+    },
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Strictly private registry of verified admin UIDs."
+    }
+  }
+}

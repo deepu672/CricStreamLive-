@@ -1,0 +1,6 @@
+{
+  "name": "CricStage Live",
+  "description": "Live cricket streaming platform with real-time match management, video capture playback, announcement popups, and single-device locked admin console.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
